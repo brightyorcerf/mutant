@@ -69,22 +69,33 @@ def test_gate_blocks_only_on_proof_or_when_blind():
     assert decide(plan("ok"), [row("killed"), row("timeout")], [])[:2] == ("Pass", "success")
 
 
-DEMO = Path(__file__).parent / "demo"
+ROOT = Path(__file__).parent
 
 
-@pytest.mark.skipif(not (DEMO / ".git").exists(), reason="demo repo not present")
-def test_end_to_end_on_demo_leaves_repo_clean():
-    hw = Path(__file__).parent / "fixtures" / "handwritten"
-    work = DEMO / ".mutant"
-    work.mkdir(exist_ok=True)
-    (work / "mutants.json").write_text((hw / "mutants.json").read_text())
-    (work / "tests.json").write_text((hw / "tests.json").read_text())
-    before = subprocess.run(["git", "status", "--short"], cwd=DEMO, capture_output=True, text=True).stdout
-    for step in ("plan", "run", "prove"):
-        assert subprocess.run([sys.executable, "mutant.py", step, "--repo", "demo"], cwd=DEMO.parent, capture_output=True).returncode == 0
-    r = subprocess.run([sys.executable, "mutant.py", "report", "--repo", "demo"], cwd=DEMO.parent, capture_output=True, text=True)
-    assert r.returncode == 1 and "MUTANT_STATE=failure" in r.stdout  # proven gaps block
-    results = json.loads((work / "results.json").read_text())
-    assert [x["status"] for x in results].count("killed") == 2
-    assert subprocess.run(["git", "status", "--short"], cwd=DEMO, capture_output=True, text=True).stdout == before
-    assert "mutant-" not in subprocess.run(["git", "worktree", "list"], cwd=DEMO, capture_output=True, text=True).stdout
+def ref(name):
+    """The branch as a local name or origin/<name>, else None."""
+    for r in (name, f"origin/{name}"):
+        if subprocess.run(["git", "rev-parse", "--verify", "-q", r], cwd=ROOT, capture_output=True).returncode == 0:
+            return r
+
+
+@pytest.mark.skipif(not (ref("demo/base") and ref("demo/agent-pr")), reason="run: git fetch origin demo/base demo/agent-pr")
+def test_end_to_end_on_demo_branches_leaves_repo_clean(tmp_path):
+    hw, wt = ROOT / "fixtures" / "handwritten", tmp_path / "demo"
+    subprocess.run(["git", "worktree", "add", "--detach", str(wt), ref("demo/agent-pr")], cwd=ROOT, check=True, capture_output=True)
+    try:
+        work = wt / ".mutant"
+        work.mkdir()
+        (work / "mutants.json").write_bytes((hw / "mutants.json").read_bytes())
+        (work / "tests.json").write_bytes((hw / "tests.json").read_bytes())
+        status = lambda: subprocess.run(["git", "status", "--short"], cwd=wt, capture_output=True, text=True).stdout
+        before = status()
+        step = lambda s: subprocess.run([sys.executable, "mutant.py", s, "--repo", str(wt), "--base", ref("demo/base")], cwd=ROOT, capture_output=True, text=True)
+        for s in ("plan", "run", "prove"):
+            assert step(s).returncode == 0
+        r = step("report")
+        assert r.returncode == 1 and "MUTANT_STATE=failure" in r.stdout  # proven gaps block
+        assert [x["status"] for x in json.loads((work / "results.json").read_text())].count("killed") == 2
+        assert status() == before  # mutants never touched the working copy
+    finally:
+        subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=ROOT, capture_output=True)

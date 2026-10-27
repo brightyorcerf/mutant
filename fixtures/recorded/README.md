@@ -1,7 +1,7 @@
 # Recorded real-model replies
 
 These are **real** replies from `deepseek/deepseek-v4.1-flash` via the Alan gateway, captured on 2026-10-27 for the
-`demo/` branch `agent/shipping-and-bulk` against `main`.
+the demo PR (`demo/agent-pr` against `demo/base`).
 
 - `mutants.raw.txt` / `mutants.meta.json` — 12 mutants, 5,204 tokens, $0.0056058.
 - `tests.raw.txt` / `tests.meta.json` — 9 proof tests, 4,667 tokens, $0.0043980.

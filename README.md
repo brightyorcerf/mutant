@@ -22,22 +22,22 @@ from the JSON and the test output.
 
 ## 60-second quickstart
 ```
-git clone https://github.com/brightyorcerf/mutant-demo demo   # the demo PR lives in its own repo
+git clone https://github.com/brightyorcerf/mutant && cd mutant
 python -m pip install pytest
-python -m pytest test_mutant.py -q
-python mutant.py plan --repo demo --base main
+git worktree add ../mutant-demo demo/agent-pr        # the demo PR: weak agent tests, branch demo/agent-pr vs demo/base
+python mutant.py plan --repo ../mutant-demo --base demo/base
 ```
 
 That checks the harness. To see a full scored report offline, replay the hand-written fixture (it is **not** a model
 result — it only exercises the pipeline):
 ```
-cp fixtures/handwritten/mutants.json demo/.mutant/ && python mutant.py run --repo demo
-cp fixtures/handwritten/tests.json   demo/.mutant/ && python mutant.py prove --repo demo
-python mutant.py report --repo demo --model "hand-written" --cost '$0' --md demo/.mutant/report.md
+cp fixtures/handwritten/mutants.json ../mutant-demo/.mutant/ && python mutant.py run --repo ../mutant-demo
+cp fixtures/handwritten/tests.json   ../mutant-demo/.mutant/ && python mutant.py prove --repo ../mutant-demo
+python mutant.py report --repo ../mutant-demo --model "hand-written" --cost '$0'
 ```
 
 ## Real result
-One real run on `demo/` (`agent/shipping-and-bulk` vs `main`), model `deepseek/deepseek-v4.1-flash`:
+One real run on the demo PR (`demo/agent-pr` vs `demo/base`), model `deepseek/deepseek-v4.1-flash`:
 
 | | |
 |---|---|
@@ -102,6 +102,6 @@ The `ledger` result is the good case: 0/3 hidden bugs caught before, 3/3 after, 
   changed function.
 
 ## Tests
-`python -m pytest test_mutant.py` (includes an end-to-end run on `demo/`).
+`python -m pytest test_mutant.py` (includes an end-to-end run on the `demo/agent-pr` branch; it skips if the demo branches aren't fetched).
 
 MIT licensed.

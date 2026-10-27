@@ -175,7 +175,7 @@ demo/agent-coverage        the same PR with tests raised to 100% coverage (#4)
 python -m pytest test_mutant.py
 ```
 
-Fourteen tests covering the edit contract, the safety filters, the gate's decision table, and an end-to-end run against the demo branches that also asserts the working copy is untouched. The end-to-end test skips if the demo branches are not fetched (`git fetch origin demo/base demo/agent-pr`).
+Eighteen tests covering the edit contract, the safety filters, the gate's decision table, and an end-to-end run against the demo branches that also asserts the working copy is untouched. The end-to-end test skips if the demo branches are not fetched (`git fetch origin demo/base demo/agent-pr`).
 
 ## License
 

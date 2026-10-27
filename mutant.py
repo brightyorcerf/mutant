@@ -17,9 +17,10 @@ from pathlib import Path
 TEST_FILE = re.compile(r"(^|/)(test_[^/]*|[^/]*_test|conftest)\.py$|(^|/)tests?/")
 SECRET = re.compile(r"TOKEN|SECRET|PASSWORD|CREDENTIAL|API_?KEY|^GH_|^GITHUB_", re.I)
 ENV = {**{k: v for k, v in os.environ.items() if not SECRET.search(k)}, "PYTHONDONTWRITEBYTECODE": "1"}
-# a "mutant" or test that adds any of these is rejected: model output must never become arbitrary code
-UNSAFE = re.compile(r"\b(import|os|subprocess|socket|shutil|ctypes|pickle|__import__)\b|\b(eval|exec|open)\s*\(")
-BAD_MODULES = {"os", "subprocess", "socket", "shutil", "ctypes", "pickle", "urllib", "requests"}
+# a "mutant" or test that adds any of these is rejected: model output must never become arbitrary code.
+# a denylist, so it is defense in depth on top of the throwaway worktree and stripped env, not a sandbox.
+UNSAFE = re.compile(r"\b(import|os|subprocess|socket|shutil|ctypes|pickle|getattr|setattr|delattr|compile|breakpoint|globals|vars)\b|\b__\w+__\b|\b(eval|exec|open)\s*\(")
+BAD_MODULES = {"os", "subprocess", "socket", "shutil", "ctypes", "pickle", "urllib", "requests", "importlib", "builtins", "pathlib", "io"}
 
 
 def log(s):

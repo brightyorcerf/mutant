@@ -49,6 +49,15 @@ def test_unsafe_test_code():
     assert "eval" in unsafe_test("def test_a():\n    eval('1')\n")
 
 
+@pytest.mark.parametrize("code", [
+    "import importlib\n\ndef test_a():\n    importlib.import_module('o' + 's').system('echo x')\n",   # denylisted import
+    "def test_a():\n    getattr(__builtins__, 'ev' + 'al')('1')\n",                                      # getattr + dunder, no import
+    "from pathlib import Path\n\ndef test_a():\n    assert 'x' in Path('pricing.py').read_text()\n",      # reads source, proves nothing
+])
+def test_unsafe_test_blocks_code_execution_escapes(code):
+    assert unsafe_test(code) is not None
+
+
 def plan(state):
     return {"state": state}
 

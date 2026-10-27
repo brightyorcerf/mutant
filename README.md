@@ -22,7 +22,7 @@ from the JSON and the test output.
 
 ## 60-second quickstart
 ```
-git clone https://github.com/tejaanshglido/mutant-demo demo   # the demo PR lives in its own repo
+git clone https://github.com/brightyorcerf/mutant-demo demo   # the demo PR lives in its own repo
 python -m pip install pytest
 python -m pytest test_mutant.py -q
 python mutant.py plan --repo demo --base main

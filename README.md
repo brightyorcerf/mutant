@@ -30,13 +30,13 @@ Alan automation (pull request opened / synchronized)
   -> Alan test report, PR comment, required commit status
 ```
 
-`mutant.py` is about 270 lines of standard-library Python with zero model calls. The agent's output crosses a trust boundary as two JSON files, and the script treats them exactly like any other untrusted input. Because the script is deterministic, every verdict can be replayed from those two files and the test output, which is what you want from something that sits in front of a merge button.
+`mutant.py` is about 300 lines of standard-library Python with zero model calls. The agent's output crosses a trust boundary as two JSON files, and the script treats them exactly like any other untrusted input. Because the script is deterministic, every verdict can be replayed from those two files and the test output, which is what you want from something that sits in front of a merge button.
 
 ### The pipeline in detail
 
 plan. Computes `git diff -U0 base...HEAD`, extracts added line ranges from non-test Python files, and runs the suite three times in a clean `git worktree` of HEAD. A red baseline and a flaky baseline are distinct failure modes, and both block with their own message, because every downstream verdict is meaningless if the suite cannot agree with itself.
 
-mutants. The agent proposes edits as `{file, find, replace}` rather than unified diffs. Small models get hunk headers and context lines wrong, and Windows checkouts with `core.autocrlf` make `git apply` reject LF patches. A find/replace contract sidesteps both. `find` must occur exactly once, sit on a line the PR actually changed, and span a single line. Edits to test files, and edits that introduce `import`, `os`, `subprocess`, `eval`, `exec` or `open(`, are rejected before anything runs, so prompt injection hidden in a diff cannot turn into executed code.
+mutants. The agent proposes edits as `{file, find, replace}` rather than unified diffs. Small models get hunk headers and context lines wrong, and Windows checkouts with `core.autocrlf` make `git apply` reject LF patches. A find/replace contract sidesteps both. `find` must occur exactly once, sit on a line the PR actually changed, and span a single line. Edits to test files, and edits that add imports or dangerous calls like `os`, `subprocess`, `eval`, `exec`, `open(` or `getattr`, are rejected before anything runs. That filter is a denylist, so it is defense in depth rather than a sandbox: the real isolation is the throwaway worktree, the stripped environment, and the same-repository-only rule.
 
 run. Each mutant is applied inside a throwaway worktree, never the user's checkout, and restored in a `finally`. The suite runs in its own process group with a timeout of three times the baseline plus ten seconds, and a hang kills the whole group rather than just the parent pytest. `PYTHONDONTWRITEBYTECODE` is set and the mutated file gets a unique mtime, because CPython validates cached bytecode by source size and whole-second mtime, and same-length mutants like `<` to `>` can otherwise load the previous mutant's `.pyc`. Mutants are classified as:
 
@@ -175,7 +175,7 @@ demo/agent-coverage        the same PR with tests raised to 100% coverage (#4)
 python -m pytest test_mutant.py
 ```
 
-Eleven tests covering the edit contract, the safety filters, the gate's decision table, and an end-to-end run against the demo branches that also asserts the working copy is untouched. The end-to-end test skips if the demo branches are not fetched (`git fetch origin demo/base demo/agent-pr`).
+Fourteen tests covering the edit contract, the safety filters, the gate's decision table, and an end-to-end run against the demo branches that also asserts the working copy is untouched. The end-to-end test skips if the demo branches are not fetched (`git fetch origin demo/base demo/agent-pr`).
 
 ## License
 

@@ -1,0 +1,18 @@
+[
+{"file":"pricing.py","find":"return total >= 50","replace":"return total > 50","bug":"shipping boundary","effect":"Orders of exactly $50 no longer ship free."},
+{"file":"pricing.py","find":"if qty >= 100:","replace":"if qty > 100:","bug":"bulk 100 boundary","effect":"Exactly 100 units miss the 20% tier."},
+{"file":"pricing.py","find":"if qty >= 10:","replace":"if qty > 10:","bug":"bulk 10 boundary","effect":"Exactly 10 units miss the 10% tier."},
+{"file":"pricing.py","find":"return round(unit * 0.8, 2)","replace":"return round(unit * 0.9, 2)","bug":"wrong top-tier rate","effect":"100+ units get 10% off instead of 20%."},
+{"file":"pricing.py","find":"return round(unit * 0.9, 2)","replace":"return unit","bug":"mid tier dropped","effect":"10-99 units get no discount."},
+{"file":"pricing.py","find":"return unit","replace":"return 0","bug":"small orders free","effect":"Under 10 units cost nothing."},
+{"file":"pricing.py","find":"if code == \"SAVE10\":","replace":"if code == \"SAVE20\":","bug":"wrong coupon code","effect":"SAVE10 stops working."},
+{"file":"pricing.py","find":"return min(10.0, subtotal)","replace":"return 10.0","bug":"coupon exceeds subtotal","effect":"SAVE10 on a $4 cart gives $10 off."},
+{"file":"pricing.py","find":"subtotal >= 40","replace":"subtotal > 40","bug":"HALF boundary","effect":"A $40 cart no longer qualifies for HALF."},
+{"file":"pricing.py","find":"return subtotal * 0.5","replace":"return subtotal * 0.25","bug":"wrong HALF rate","effect":"HALF gives 25% off."},
+{"file":"pricing.py","find":"code.strip().upper()","replace":"code.upper()","bug":"whitespace not stripped","effect":"' save10 ' no longer matches."},
+{"file":"pricing.py","find":"return 0.0","replace":"return 1.0","bug":"invalid code gives $1","effect":"Unknown coupons give $1 off."},
+{"file":"pricing.py","find":"return total >= 50","replace":"return total >=","bug":"syntax error","effect":"Does not parse."},
+{"file":"pricing.py","find":"return total >= 50","replace":"return total  >=  50","bug":"whitespace only","effect":"No behaviour change."},
+{"file":"pricing.py","find":"return 0.0","replace":"return __import__('os').getcwd()","bug":"unsafe edit","effect":"Must be rejected."},
+{"file":"tests/test_new_features.py","find":"is True","replace":"is False","bug":"edits a test","effect":"Must be rejected."}
+]

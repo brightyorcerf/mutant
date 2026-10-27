@@ -1,0 +1,51 @@
+<title>Mutant Tweet Image</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: headline, two code panels side by side (before / after), one closing line. Pure black and white; emphasis is inversion only. */
+:root {
+  --bg: #000;
+  --fg: #fff;
+  --dim: #8a8a8a;
+  --line: #333;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--mono); padding-inline: 16px; padding-block: 28px; }
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+h1 { font-weight: 700; font-size: clamp(1.5rem, 3.6vw, 2.5rem); line-height: 1.15; margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+h1 span { background: var(--fg); color: var(--bg); padding: 0 8px; }
+.strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.panel { border: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; }
+.tag { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); padding: 10px 14px; border-bottom: 1px solid var(--line); }
+pre { margin: 0; padding: 14px; font-size: 0.9rem; line-height: 1.7; overflow-x: auto; flex: 1; font-family: inherit; }
+.ln { display: block; white-space: pre; }
+.cm { color: var(--dim); }
+.bug { background: var(--fg); color: var(--bg); margin-inline: -14px; padding-inline: 14px; font-weight: 700; }
+.bug .cm { color: #555; }
+.result { border-top: 1px solid var(--line); padding: 12px 14px; font-weight: 700; font-size: 0.95rem; }
+.end { font-weight: 700; font-size: clamp(1rem, 2.2vw, 1.3rem); letter-spacing: -0.01em; text-wrap: balance; }
+.end u { text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 2px; }
+.foot { font-size: 0.7rem; color: var(--dim); letter-spacing: 0.08em; }
+@media (max-width: 720px) { .strip { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+<div class="wrap" id="shot">
+  <h1>The agent's tests passed. <span>The bug shipped.</span></h1>
+
+  <div class="strip">
+    <div class="panel">
+      <div class="tag">agent's PR</div>
+<pre><span class="ln">def free_shipping(total):</span><span class="ln">    return total >= 50</span><span class="ln"> </span><span class="ln">def test_free_shipping():</span><span class="ln">    assert free_shipping(80)</span></pre>
+      <div class="result">✓ 1 passed</div>
+    </div>
+
+    <div class="panel">
+      <div class="tag">same PR, one bug planted</div>
+<pre><span class="ln">def free_shipping(total):</span><span class="ln bug">    return total > 50</span><span class="ln"> </span><span class="ln">def test_free_shipping():</span><span class="ln">    assert free_shipping(80)</span></pre>
+      <div class="result">✓ 1 passed</div>
+    </div>
+  </div>
+
+  <div class="end"><u>Mutant</u> plants the bug. If your tests stay green, it writes the one that wouldn't.</div>
+  <div class="foot">#OpenFire · built on @tryAlanAI</div>
+</div>

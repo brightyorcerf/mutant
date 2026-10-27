@@ -1,0 +1,47 @@
+[
+  {
+    "mutant": 1,
+    "question": "free_shipping(50) is True today. Should an order totaling exactly 50 ship free?",
+    "code": "from pricing import free_shipping\n\n\ndef test_free_shipping_exact_50():\n    assert free_shipping(50) is True\n"
+  },
+  {
+    "mutant": 2,
+    "question": "bulk_unit_price(100, 10) is 8.0 today. Should exactly 100 units get the 20% bulk discount?",
+    "code": "from pricing import bulk_unit_price\n\n\ndef test_bulk_exact_100_gets_20_percent():\n    assert bulk_unit_price(100, 10) == 8.0\n"
+  },
+  {
+    "mutant": 4,
+    "question": "bulk_unit_price(10, 20) is 18.0 today. Should exactly 10 units get the 10% discount?",
+    "code": "from pricing import bulk_unit_price\n\n\ndef test_bulk_exact_10_gets_10_percent():\n    assert bulk_unit_price(10, 20) == 18.0\n"
+  },
+  {
+    "mutant": 5,
+    "question": "bulk_unit_price(50, 20) is 18.0 today. Should 10-99 units use a 10% discount, not 20%?",
+    "code": "from pricing import bulk_unit_price\n\n\ndef test_mid_bulk_uses_ten_percent():\n    assert bulk_unit_price(50, 20) == 18.0\n"
+  },
+  {
+    "mutant": 6,
+    "question": "bulk_unit_price(1, 1.234) returns 1.234 today. Should small orders avoid rounding when no discount applies?",
+    "code": "from pricing import bulk_unit_price\n\n\ndef test_small_order_unit_price_is_not_rounded():\n    assert bulk_unit_price(1, 1.234) == 1.234\n"
+  },
+  {
+    "mutant": 7,
+    "question": "coupon_value(' save10 ', 100) is 10.0 today. Should surrounding whitespace be ignored?",
+    "code": "from pricing import coupon_value\n\n\ndef test_coupon_code_whitespace_is_trimmed():\n    assert coupon_value(' save10 ', 100) == 10.0\n"
+  },
+  {
+    "mutant": 10,
+    "question": "coupon_value('HALF', 40) is 20.0 today. Should a subtotal of exactly 40 qualify for HALF?",
+    "code": "from pricing import coupon_value\n\n\ndef test_half_coupon_exact_40_threshold():\n    assert coupon_value('HALF', 40) == 20.0\n"
+  },
+  {
+    "mutant": 11,
+    "question": "coupon_value('HALF', 60) is 30.0 today. Should HALF return 50% of the subtotal?",
+    "code": "from pricing import coupon_value\n\n\ndef test_half_coupon_uses_fifty_percent():\n    assert coupon_value('HALF', 60) == 30.0\n"
+  },
+  {
+    "mutant": 12,
+    "question": "coupon_value('BOGUS', 100) is 0.0 today. Should invalid coupons return zero rather than None?",
+    "code": "from pricing import coupon_value\n\n\ndef test_invalid_coupon_returns_zero():\n    assert coupon_value('BOGUS', 100) == 0.0\n"
+  }
+]

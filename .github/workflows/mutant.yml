@@ -1,0 +1,101 @@
+name: mutant
+
+# Fallback gate for teams that are not running the Alan automation.
+# This runs Mutant's deterministic half only. The model half (writing .mutant/mutants.json
+# and .mutant/tests.json) is the /mutant skill in Alan; commit those two files, or upload
+# them as an artifact, before this job can score anything.
+#
+# Security: refuses fork PRs, holds no model keys, and the checkout keeps no token for the PR's tests to read.
+# Limit: the mutants come from the PR itself (.mutant/ is git-ignored, so add them with `git add -f`), and a PR
+# can also edit this workflow. A green here is NOT proof. The trusted gate is the Alan automation, where a
+# separate agent writes the mutants. Protect this file with CODEOWNERS or a ruleset.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+concurrency:
+  group: mutant-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  mutant:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false  # the PR's tests run here; they must not find the job token in .git/config
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+
+      - name: Plan
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python mutant.py plan --base "origin/$BASE_REF"
+
+      - name: Run, prove, report
+        id: gate
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -uo pipefail
+          BASE="origin/$BASE_REF"
+          if [ ! -f .mutant/mutants.json ]; then
+            {
+              echo "### Mutant: FAIL, the model half did not run"
+              echo
+              echo "No \`.mutant/mutants.json\`. Run the \`/mutant\` skill in Alan and commit its output, or upload it as an artifact."
+            } > .mutant/report.md
+            echo "state=failure" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python mutant.py run || true
+          if [ -f .mutant/tests.json ]; then python mutant.py prove || true; fi
+          python mutant.py report --base "$BASE" \
+            --model "${MUTANT_MODEL:-unrecorded}" \
+            --cost "${MUTANT_COST:-unknown}" \
+            --md .mutant/report.md | tee report.txt || true
+          echo "state=$(sed -n 's/^MUTANT_STATE=//p' report.txt | tail -n1)" >> "$GITHUB_OUTPUT"
+
+      - name: Comment and set status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+          STATE: ${{ steps.gate.outputs.state }}
+        run: |
+          set -uo pipefail
+          [ -f .mutant/report.md ] || exit 0
+          gh pr comment "$PR" --repo "$REPO" --body-file .mutant/report.md || true
+          if [ "$STATE" = "failure" ]; then CI_STATE=failure; else CI_STATE=success; fi
+          gh api "repos/$REPO/statuses/$SHA" \
+            -f state="$CI_STATE" \
+            -f context=mutant \
+            -f description="Mutant fallback: ${STATE:-unknown} (mutants supplied by the PR, unverified)" || true
+
+      - name: Fail below the gate
+        if: always()
+        env:
+          STATE: ${{ steps.gate.outputs.state }}
+        run: |
+          if [ "$STATE" = "failure" ]; then
+            echo "Mutant blocked this PR (proven gap, bad baseline, or nothing scoreable)."
+            exit 1
+          fi

@@ -1,0 +1,15 @@
+[
+{"mutant":1,"question":"free_shipping(50) is True today. Is a $50 order meant to ship free?","code":"from pricing import free_shipping\n\n\ndef test_proof_1():\n    assert free_shipping(50) is True\n"},
+{"mutant":2,"question":"bulk_unit_price(100, 10) is 8.0 today. Does exactly 100 get the 20% tier?","code":"from pricing import bulk_unit_price\n\n\ndef test_proof_2():\n    assert bulk_unit_price(100, 10) == 8.0\n"},
+{"mutant":3,"question":"bulk_unit_price(10, 10) is 9.0 today. Does exactly 10 get the 10% tier?","code":"from pricing import bulk_unit_price\n\n\ndef test_proof_3():\n    assert bulk_unit_price(10, 10) == 9.0\n"},
+{"mutant":5,"question":"bulk_unit_price(50, 10) is 9.0 today. Is the 10% tier meant to cover 10-99?","code":"from pricing import bulk_unit_price\n\n\ndef test_proof_5():\n    assert bulk_unit_price(50, 10) == 9.0\n"},
+{"mutant":6,"question":"bulk_unit_price(9, 10) is 10 today. Small orders pay full price?","code":"from pricing import bulk_unit_price\n\n\ndef test_proof_6():\n    assert bulk_unit_price(9, 10) == 10\n"},
+{"mutant":8,"question":"coupon_value('SAVE10', 4) is 4 today. A coupon never exceeds the subtotal?","code":"from pricing import coupon_value\n\n\ndef test_proof_8():\n    assert coupon_value('SAVE10', 4) == 4\n"},
+{"mutant":9,"question":"coupon_value('HALF', 40) is 20.0 today. Does a $40 cart qualify?","code":"from pricing import coupon_value\n\n\ndef test_proof_9():\n    assert coupon_value('HALF', 40) == 20.0\n"},
+{"mutant":10,"question":"coupon_value('HALF', 100) is 50.0 today. HALF means 50%?","code":"from pricing import coupon_value\n\n\ndef test_proof_10():\n    assert coupon_value('HALF', 100) == 50.0\n"},
+{"mutant":11,"question":"coupon_value(' save10 ', 100) is 10.0 today. Codes are trimmed and case-insensitive?","code":"from pricing import coupon_value\n\n\ndef test_proof_11():\n    assert coupon_value(' save10 ', 100) == 10.0\n"},
+{"mutant":12,"question":"coupon_value('nope', 100) is 0.0 today. Unknown codes give nothing?","code":"from pricing import coupon_value\n\n\ndef test_proof_12():\n    assert coupon_value('nope', 100) == 0.0\n"},
+{"mutant":4,"question":"(already caught)","code":"def test_x():\n    assert True\n"},
+{"mutant":1,"question":"(weak proof: passes on the bug too)","code":"from pricing import free_shipping\n\n\ndef test_weak():\n    assert free_shipping(80) is True\n"},
+{"mutant":2,"question":"(unsafe)","code":"import os\n\n\ndef test_bad():\n    os.system('echo hi')\n"}
+]

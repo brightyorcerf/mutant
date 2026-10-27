@@ -1,0 +1,5 @@
+[
+{"file":"slugify.py","find":"if len(slug) > max_length:","replace":"if len(slug) > max_length + 1:","bug":"one-over limit not truncated","effect":"A slug exactly one character over the limit is returned in full."},
+{"file":"slugify.py","find":"if max_length < 1:","replace":"if max_length < 2:","bug":"limit one rejected","effect":"slugify(text, max_length=1) raises ValueError."},
+{"file":"slugify.py","find":"STOPWORDS = frozenset({\"a\", \"an\", \"the\", \"and\", \"or\", \"of\", \"to\", \"in\", \"on\", \"for\"})","replace":"STOPWORDS = frozenset({\"a\", \"an\", \"the\", \"and\", \"or\", \"of\", \"to\", \"in\", \"on\"})","bug":"for no longer a stopword","effect":"The word 'for' is kept in slugs."}
+]

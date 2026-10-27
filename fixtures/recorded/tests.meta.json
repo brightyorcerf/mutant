@@ -1,0 +1,38 @@
+{
+  "model": "deepseek/deepseek-v4.1-flash",
+  "timestamp": "2026-10-27T11:05:21+0530",
+  "elapsed_s": 13.55,
+  "prompt_tokens": 1336,
+  "completion_tokens": 3331,
+  "total_tokens": 4667,
+  "cost": 0.004398,
+  "usage_raw": {
+    "prompt_tokens": 1336,
+    "completion_tokens": 3331,
+    "total_tokens": 4667,
+    "cost": 0.004398,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": null,
+      "upstream_inference_prompt_cost": 0,
+      "upstream_inference_completions_cost": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 2490,
+      "image_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "market_cost": 0.004398,
+    "surcharge_cost": 0.000325,
+    "gateway_cost": 0.004723,
+    "zero_data_retention_cost": 0.0001,
+    "reporting_tag_write_cost": 0.000225
+  },
+  "response_id": "gen_01M5XXNW3RB9M5A7NBHR07GTR0",
+  "finish_reason": "stop"
+}

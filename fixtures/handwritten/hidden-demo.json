@@ -1,0 +1,5 @@
+[
+{"file":"pricing.py","find":"return total >= 50","replace":"return total >= 60","bug":"shipping threshold drifted"},
+{"file":"pricing.py","find":"return round(unit * 0.8, 2)","replace":"return round(unit * 0.75, 2)","bug":"top tier too generous"},
+{"file":"pricing.py","find":"return min(10.0, subtotal)","replace":"return max(10.0, subtotal)","bug":"min/max swapped"}
+]

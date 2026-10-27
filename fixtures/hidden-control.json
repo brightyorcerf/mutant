@@ -1,0 +1,5 @@
+[
+{"file":"src/packaging/utils.py","find":"    for suffix in _SDIST_SUFFIXES:","replace":"    for suffix in _SDIST_SUFFIXES[:-1]:","bug":"zip support dropped","effect":"Zip sdists are rejected as having an unsupported extension."},
+{"file":"src/packaging/utils.py","find":"file_stem = filename[: -len(suffix)]","replace":"file_stem = filename[: -len(suffix) + 1]","bug":"stem off by one","effect":"The archive suffix keeps one extra character, corrupting the version."},
+{"file":"src/packaging/utils.py","find":"    if not name_part:","replace":"    if name_part is None:","bug":"empty name accepted","effect":"An sdist with an empty project name parses instead of raising."}
+]

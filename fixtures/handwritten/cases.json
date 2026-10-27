@@ -1,0 +1,3 @@
+[
+{"name": "demo (hand-written fixtures, not a result)", "repo": "demo", "base": "main", "hidden": "fixtures/handwritten/hidden-demo.json"}
+]

@@ -1,0 +1,5 @@
+[
+{"file":"paginate.py","find":"pages = page_count(total, per_page)","replace":"pages = page_count(total, 10)","bug":"page size hardcoded","effect":"page counts ignore per_page and always use 10."},
+{"file":"paginate.py","find":"end = start + per_page","replace":"end = start + 10","bug":"slice size hardcoded","effect":"pages contain at most 10 items regardless of per_page."},
+{"file":"paginate.py","find":"if per_page < 1:","replace":"if per_page < 2:","bug":"per_page one rejected","effect":"page_count(total, 1) raises ValueError."}
+]

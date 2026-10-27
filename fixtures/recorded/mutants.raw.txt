@@ -1,0 +1,14 @@
+[
+  {"file":"pricing.py","find":"    return total >= 50","replace":"    return total > 50","bug":"shipping threshold boundary error","effect":"A total of exactly 50 no longer qualifies for free shipping."},
+  {"file":"pricing.py","find":"    if qty >= 100:","replace":"    if qty > 100:","bug":"bulk threshold boundary error","effect":"An order of exactly 100 units no longer receives the 20% discount."},
+  {"file":"pricing.py","find":"        return round(unit * 0.8, 2)","replace":"        return round(unit * 0.7, 2)","bug":"wrong bulk discount factor","effect":"Orders of 100 or more units receive a 30% discount instead of 20%."},
+  {"file":"pricing.py","find":"    if qty >= 10:","replace":"    if qty > 10:","bug":"mid threshold boundary error","effect":"An order of exactly 10 units no longer receives the 10% discount."},
+  {"file":"pricing.py","find":"        return round(unit * 0.9, 2)","replace":"        return round(unit * 0.8, 2)","bug":"wrong mid discount factor","effect":"Orders of 10 to 99 units receive a 20% discount instead of 10%."},
+  {"file":"pricing.py","find":"    return unit","replace":"    return round(unit, 2)","bug":"unexpected small order rounding","effect":"Small-quantity orders are rounded to two decimals even though no discount applies."},
+  {"file":"pricing.py","find":"    code = code.strip().upper()","replace":"    code = code.upper()","bug":"missing coupon whitespace trim","effect":"Coupon codes with surrounding whitespace are no longer recognized."},
+  {"file":"pricing.py","find":"    if code == \"SAVE10\":","replace":"    if code != \"SAVE10\":","bug":"inverted save10 coupon condition","effect":"SAVE10 no longer receives its discount while many other codes incorrectly do."},
+  {"file":"pricing.py","find":"        return min(10.0, subtotal)","replace":"        return max(10.0, subtotal)","bug":"coupon min max swapped","effect":"SAVE10 now returns the larger of 10 and the subtotal instead of capping the discount at 10."},
+  {"file":"pricing.py","find":"    if code == \"HALF\" and subtotal >= 40:","replace":"    if code == \"HALF\" and subtotal > 40:","bug":"half threshold boundary error","effect":"A subtotal of exactly 40 no longer qualifies for the HALF coupon."},
+  {"file":"pricing.py","find":"        return subtotal * 0.5","replace":"        return subtotal * 0.4","bug":"wrong half coupon factor","effect":"The HALF coupon now returns 40% of the subtotal instead of 50%."},
+  {"file":"pricing.py","find":"    return 0.0","replace":"    return None","bug":"invalid coupon returns none","effect":"Unknown or ineligible coupons return None instead of zero, which can break arithmetic."}
+]

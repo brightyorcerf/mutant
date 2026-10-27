@@ -1,0 +1,5 @@
+[
+{"file":"ledger.py","find":"if people < 1:","replace":"if people <= 1:","bug":"single payer rejected","effect":"Splitting a bill for one person raises ValueError."},
+{"file":"ledger.py","find":"if not 0 <= pct <= MAX_PCT:","replace":"if not 0 <= pct < MAX_PCT:","bug":"100 percent rate rejected","effect":"A 100% tax or tip rate is rejected as out of range."},
+{"file":"ledger.py","find":"if total < 0:","replace":"if total <= 0:","bug":"zero total rejected","effect":"A zero-dollar bill raises ValueError."}
+]

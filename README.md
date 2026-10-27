@@ -71,6 +71,20 @@ Two independent Alan sessions ran the `/mutant` skill on [pull request #3](https
 
 The agent-written tests caught a third of the realistic bugs. Every survivor came back with a test that passes on the PR and fails on the bug, phrased as a question for the author, for example "free_shipping(50) is False with the mutant and True today. Is a $50 order meant to ship free, or does it only start above $50?" Neither session could read its own token usage, so the reports say cost unknown rather than guess.
 
+### Coverage is not the answer
+
+The obvious objection is that a coverage report would have flagged PR #3 too: its tests reach 59% of `pricing.py`. So I gave an Alan agent the instruction agents usually get when a reviewer says the tests are thin, with no mention of mutants: add tests to [pull request #4](https://github.com/brightyorcerf/mutant/pull/4) until `pricing.py` has 100% line and branch coverage. Then two gate sessions ran on it.
+
+| | PR #3 | PR #4 |
+|---|---|---|
+| Line and branch coverage of `pricing.py` (coverage.py, `--branch`) | 59% | 100% |
+| Tests | 5 | 10 |
+| Mutants caught / valid | 4 / 12 | 10 / 12 |
+| Proven gaps | 8 | 2 |
+| Gate | Fail | Fail |
+
+Both PR #4 sessions proved the same `qty >= 10` boundary gap, and each proved a different half of the coupon normalisation (one dropped `.strip()`, the other `.upper()`). Every line and branch executes, yet nothing asserts that an order of exactly ten units gets the bulk rate, or that `"  save10  "` is a valid code. The proof question posted on the PR reads: "bulk_unit_price(10, 10) is 9.0 today. Does the 10% tier include an order of exactly 10 units, or only above 10?" Reports: [session 1](https://github.com/brightyorcerf/mutant/pull/4#issuecomment-6436433129), [session 2](https://github.com/brightyorcerf/mutant/pull/4#issuecomment-6436456095).
+
 An earlier run on the same code, executed locally through Alan's model gateway with usage metadata:
 
 | Metric | Value |
@@ -151,7 +165,8 @@ scripts/bench.py           hidden-bug benchmark harness
 fixtures/handwritten/      hand-written mutants and proofs for offline runs
 fixtures/recorded/         raw replies and usage from the real model run
 .github/workflows/         opt-in GitHub Actions fallback
-demo/base, demo/agent-pr   branches holding the demo project and its weak agent PR
+demo/base, demo/agent-pr   branches holding the demo project and its weak agent PR (#3)
+demo/agent-coverage        the same PR with tests raised to 100% coverage (#4)
 ```
 
 ## Tests

@@ -18,6 +18,7 @@
 | PR comment + Alan test report | Done, by the Alan agent |
 | Required `mutant` commit status | Done, but posted with the owner's `gh`: Alan's integration token gets 403 on statuses (answers open question 3) |
 | Automation on PR opened / synchronize | Configured. Cloud builds fail at `fetch: BUILD` for any fresh commit (Alan platform issue), so the on-camera run is a local Alan session |
+| Coverage experiment (PR #4) | Done. An agent raised coverage to 100% line and branch; two gate runs still proved 2 gaps each, Fail |
 | Benchmark | Done once (3/11 hidden bugs caught by PR tests, 6/11 with proofs). Spread over 3 runs: cut |
 | Proof rule 4 (not a duplicate) | Holds by construction: the mutant survived every existing test |
 | Reproducible gate (cache mutants.json by diff hash) | Cut. Two independent runs already agreed; changing the skill before the demo costs more than it saves |

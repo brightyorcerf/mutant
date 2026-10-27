@@ -6,6 +6,8 @@
 
 A merge gate for agent-written pull requests that only blocks when it can show you a runnable proof.
 
+Project page: https://brightyorcerf.github.io/mutant/ and the live demo pull request: https://github.com/brightyorcerf/mutant/pull/4
+
 ## Why I built this
 
 Coding agents now write the implementation and the tests in the same pass. That quietly breaks an assumption most CI pipelines rely on: that the tests were written by someone trying to catch the code being wrong. When one model writes both sides, a green check mostly tells you the code agrees with itself. Line coverage does not rescue you either. A test can execute every line of a function and still assert nothing about the boundary that matters.

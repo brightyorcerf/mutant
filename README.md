@@ -1,108 +1,153 @@
+<p align="center">
+  <img src="assets/mutant.png" alt="A yellow smiley mask with a green tentacle peeking out from behind it" width="440">
+</p>
+
 # Mutant
 
-**A merge gate that only blocks with runnable proof.**
+A merge gate for agent-written pull requests that only blocks when it can show you a runnable proof.
 
-Agents write the code and the tests, so a green CI proves little. Mutant has an agent plant realistic bugs on the
-lines a PR changed. If the PR's tests stay green, Mutant asks for a **proof test**: it passes on the PR's code, fails on
-the planted bug, and wasn't in the suite. A proven gap blocks the merge. A model's guess never does.
+## Why I built this
+
+Coding agents now write the implementation and the tests in the same pass. That quietly breaks an assumption most CI pipelines rely on: that the tests were written by someone trying to catch the code being wrong. When one model writes both sides, a green check mostly tells you the code agrees with itself. Line coverage does not rescue you either. A test can execute every line of a function and still assert nothing about the boundary that matters.
+
+Mutation testing is the classic answer to "are my tests any good". You inject small, realistic faults into the code and see whether the suite notices. The idea is decades old, and Google has published work on running it against changed code at review time. In practice it has a reputation for noise. Syntactic mutation operators produce a lot of equivalent or trivially killed mutants, and "your mutation score is 62%" is a weak reason to block anyone's merge.
+
+Mutant takes a narrower and, I think, more defensible position. It never blocks on a score. It blocks on evidence: a concrete test that passes on the PR's code, fails on a realistic planted bug, and was not already in the suite. If that test cannot be produced, the surviving mutant is reported but the merge goes through. The model's opinion is never the evidence. A test run is.
+
+## Architecture
+
+The system is split into a model half and a deterministic half, and that split is the most important design decision in the project.
 
 ```
-Alan automation (PR opened / updated)
-  -> /mutant skill, run by Alan Code on an open model
-       plan    baseline x3, changed lines          (mutant.py, no model)
-       agent   writes mutants.json                 (open model)
-       run     apply, test, restore, classify      (mutant.py)
-       agent   writes a proof test per survivor    (open model)
-       prove   3x green on the PR, red on the bug  (mutant.py)
-       report  markdown + Fail / Mixed / Pass      (mutant.py)  -> Alan test report, PR comment, commit status
+Alan automation (pull request opened / synchronized)
+  -> /mutant skill, executed by Alan Code on an open-weight model
+       plan     baseline x3, changed-line extraction          mutant.py, no model
+       agent    proposes mutants as find/replace edits        open model
+       run      apply, test, restore, classify                mutant.py
+       agent    writes one candidate proof test per survivor  open model
+       prove    3x green on the PR, 2x red on the mutant      mutant.py
+       report   Pass / Mixed / Fail + markdown                mutant.py
+  -> Alan test report, PR comment, required commit status
 ```
 
-`mutant.py` is ~300 lines, standard library only, and contains **no model calls**, so every verdict is reproducible
-from the JSON and the test output.
+`mutant.py` is about 270 lines of standard-library Python with zero model calls. The agent's output crosses a trust boundary as two JSON files, and the script treats them exactly like any other untrusted input. Because the script is deterministic, every verdict can be replayed from those two files and the test output, which is what you want from something that sits in front of a merge button.
 
-## 60-second quickstart
+### The pipeline in detail
+
+plan. Computes `git diff -U0 base...HEAD`, extracts added line ranges from non-test Python files, and runs the suite three times in a clean `git worktree` of HEAD. A red baseline and a flaky baseline are distinct failure modes, and both block with their own message, because every downstream verdict is meaningless if the suite cannot agree with itself.
+
+mutants. The agent proposes edits as `{file, find, replace}` rather than unified diffs. Small models get hunk headers and context lines wrong, and Windows checkouts with `core.autocrlf` make `git apply` reject LF patches. A find/replace contract sidesteps both. `find` must occur exactly once, sit on a line the PR actually changed, and span a single line. Edits to test files, and edits that introduce `import`, `os`, `subprocess`, `eval`, `exec` or `open(`, are rejected before anything runs, so prompt injection hidden in a diff cannot turn into executed code.
+
+run. Each mutant is applied inside a throwaway worktree, never the user's checkout, and restored in a `finally`. The suite runs in its own process group with a timeout of three times the baseline plus ten seconds, and a hang kills the whole group rather than just the parent pytest. `PYTHONDONTWRITEBYTECODE` is set and the mutated file gets a unique mtime, because CPython validates cached bytecode by source size and whole-second mtime, and same-length mutants like `<` to `>` can otherwise load the previous mutant's `.pyc`. Mutants are classified as:
+
+| Status | Meaning | Scored |
+|---|---|---|
+| killed | the suite failed, confirmed by a second run | yes |
+| timeout | the mutant hung the suite | yes, counts as detected |
+| survived | the suite stayed green | yes |
+| trivial | every test failed, per JUnit XML, so it says nothing about test quality | no |
+| inconclusive | the kill did not reproduce, so a flaky failure is never counted as a catch | no |
+| equivalent | identical AST to the original, so no behaviour changed | no |
+| stillborn | does not parse, or pytest could not collect | no |
+| rejected | violated the edit contract or the safety filter | no |
+
+prove. For each survivor the agent writes one candidate test. It is accepted only if it passes three times on the unmutated PR, fails twice on its target mutant, keeps the full suite green, and passes an AST-level import filter. A survivor with an accepted proof test is non-equivalent by construction, which means the gate never needs an LLM to judge equivalence. That removes the least reliable step in most LLM-assisted mutation pipelines.
+
+report. The gate is deliberately asymmetric. Fail means a proven gap, an untrustworthy baseline, or nothing scoreable. Mixed means survivors exist but none could be proven, so they are listed and do not block. Pass means everything scored was caught, or there was nothing to mutate. "Could not verify" is always a Fail, never a silent pass.
+
+## Results
+
+One real run with `deepseek/deepseek-v4.1-flash` through Alan's model gateway, executed locally on the same code that now lives on `demo/agent-pr`. The automated run on the pull request itself is separate.
+
+| Metric | Value |
+|---|---|
+| Mutants proposed / valid | 12 / 12 |
+| Caught by the PR's own tests | 3 |
+| Survived | 9 |
+| Stillborn / equivalent / rejected | 0 / 0 / 0 |
+| Proof tests accepted | 9 / 9 |
+| Gate | Fail, 9 proven gaps |
+| Cost | $0.0100, 9,871 tokens, 2 model calls |
+
+The agent's tests caught 3 of 12 realistic bugs, and every one of the 9 survivors came back with a test that passes today and fails on the bug. Raw model replies and usage metadata are in `fixtures/recorded/`.
+
+### Hidden-bug benchmark
+
+A mutation score only measures the bugs the model thought of, so I also measured against bugs the model never saw. For each PR, three realistic bugs were written down before Mutant ran. The question is how many of them the PR's tests catch, and how many are caught once Mutant's accepted proof tests are added.
+
+| Case | PR tests | With proof tests | Valid mutants | Cost |
+|---|---|---|---|---|
+| ledger | 0 / 3 | 3 / 3 | 12 / 12 | $0.0120 |
+| slugify | 1 / 3 | 1 / 3 | 12 / 12 | $0.0092 |
+| paginate | 0 / 3 | 0 / 3 | 12 / 12 | $0.0083 |
+| control (`pypa/packaging` with its real tests) | 2 / 2 scored | 2 / 2 | 12 / 12 | $0.0132 |
+| total | 3 / 11 | 6 / 11 | 48 / 48 | $0.0427 |
+
+Two caveats I want to be upfront about. First, the benchmark repositories are not published here yet, so treat this table as a report from one run rather than a reproducible result. Second, slugify and paginate both report Pass while each still leaks two hidden bugs. All twelve model-generated mutants were killed, so there were no survivors and nothing to prove. The model's blind spots become the gate's blind spots. That is the honest weakness of this design, and the benchmark is sized to show it rather than hide it. Ledger is the good case: zero of three hidden bugs caught before, three of three after, because the survivors were real gaps.
+
+## Quickstart
+
+No model and no API key required. The hand-written fixtures exercise the full pipeline; they are stand-ins for model output, not a result.
+
 ```
 git clone https://github.com/brightyorcerf/mutant && cd mutant
 python -m pip install pytest
-git worktree add ../mutant-demo demo/agent-pr        # the demo PR: weak agent tests, branch demo/agent-pr vs demo/base
+git worktree add ../mutant-demo demo/agent-pr
 python mutant.py plan --repo ../mutant-demo --base demo/base
-```
-
-That checks the harness. To see a full scored report offline, replay the hand-written fixture (it is **not** a model
-result — it only exercises the pipeline):
-```
-cp fixtures/handwritten/mutants.json ../mutant-demo/.mutant/ && python mutant.py run --repo ../mutant-demo
+cp fixtures/handwritten/mutants.json ../mutant-demo/.mutant/ && python mutant.py run   --repo ../mutant-demo
 cp fixtures/handwritten/tests.json   ../mutant-demo/.mutant/ && python mutant.py prove --repo ../mutant-demo
-python mutant.py report --repo ../mutant-demo --model "hand-written" --cost '$0'
+python mutant.py report --repo ../mutant-demo --model hand-written --cost '$0'
 ```
 
-## Real result
-One real run on the demo PR (`demo/agent-pr` vs `demo/base`), model `deepseek/deepseek-v4.1-flash`:
+The report exits 1 when the gate fails, so it drops straight into any CI system.
 
-| | |
-|---|---|
-| Mutants proposed / valid | 12 / 12 |
-| Caught by the PR's tests | **3** |
-| Survived | **9** |
-| Stillborn / equivalent / rejected | 0 / 0 / 0 |
-| Proof tests accepted | **9 / 9** |
-| Gate | **FAIL** (9 proven gaps) |
-| Cost | **$0.0100** · 9,871 tokens · 2 calls |
+## Running it in Alan
 
-The PR's tests caught 3 of 12 planted bugs (25%). Every survivor came back with a proof test that passes on the PR and
-fails on the bug. Raw replies are in `fixtures/recorded/`; this number is from the real endpoint, not fixtures.
+1. Cloud environment: this repository, Python 3.12, and an install script of `python3 -m pip install --break-system-packages pytest` (Ubuntu 24.04 enforces PEP 668).
+2. Skill: `skills/mutant/SKILL.md`, added as a team skill named `mutant`. Alan Code on an open-weight model is the model half.
+3. Automation: GitHub `pr_opened` and `pr_synchronize` triggers. `pr_opened` alone does not re-fire on new commits, which would leave the gate stale after the author pushes a fix. Instructions are in `docs/automation-instructions.md`.
+4. Enforcement: the report goes into an Alan test report and a PR comment, and `scripts/post_status.sh` sets a `mutant` commit status. Mark that status as required in branch protection to turn the report into an actual merge block.
+5. Fallback: `.github/workflows/mutant.yml` runs the deterministic half in GitHub Actions on PRs labelled `mutant`. It never calls a model, refuses fork PRs, and checks out without persisted credentials so the PR's own tests cannot read the job token. Because the mutants in that path come from the PR itself, a green there is not proof. The trusted gate is the Alan automation, where a separate agent writes the mutants.
 
-## How Alan runs it
-1. **Cloud environment** — the repo, Python 3.12, `pytest`, and the repo's deps installed in the image.
-2. **Skill** — `skills/mutant/SKILL.md` added as a team skill named `mutant`. Alan Code is the model half.
-3. **Automation** — GitHub `pr_opened` **and** `pr_synchronize` (new commits do not re-fire `pr_opened`), optionally
-   `push`. Instructions: `docs/automation-instructions.md`.
-4. **Evidence** — the report is pasted into an Alan test report and posted to the PR; `scripts/post_status.sh` sets a
-   `mutant` commit status, which becomes a real merge block when marked **Required** in branch protection.
-5. **Fallback** — `.github/workflows/mutant.yml` runs the deterministic half in GitHub Actions and comments the report.
-   It only runs on PRs labelled `mutant`, and it does not call a model: the two JSON files must come from the skill.
-   It refuses fork PRs and holds no keys.
+## Design decisions I would defend in review
 
-Model availability is team-scoped: on this team's gateway only `deepseek/deepseek-v4.1-flash` and
-`minimax/minimax-m3.1-flash` are enabled. Other ids return `403 This model is disabled for the team`.
+No threshold. With around fifteen mutants per PR, one mutant is worth about seven points, and the mutant set changes between runs. A percentage cutoff on that is noise with a config knob attached. Blocking on proof has no number to tune.
 
-## Benchmark (real model, real numbers)
-**Not reproducible from this repo yet:** the four benchmark repos (`bench/`) are not published, and no timestamp
-proves the hidden bugs were written first. Treat this table as a report from one run, not a verified result.
+No equivalence judge. LLM judges for mutant equivalence are unreliable in both directions, and a wrong "equivalent" verdict silently hides a real gap. Requiring a runnable proof makes equivalence a non-question for anything that blocks.
 
-Four PRs, three written the way an AI coding agent normally writes code + tests, plus a control from a real library
-(`pypa/packaging`'s `utils.py` and its own tests). Three hidden bugs per PR were written **before** Mutant ran and never
-shown to the model.
+Proof tests are questions, not commits. A test that kills `>=` to `>` asserts what the PR's code does today. If the agent got the boundary wrong, auto-committing that test would enshrine the bug. So each proof is posted with a question for the author, for example "free_shipping(50) is True today. Is a $50 order meant to ship free?", and never pushed to the PR branch.
 
-| case | PR tests caught | with Mutant proofs | valid mutants | stillborn | equivalent | false alarms | seconds | cost |
-|---|---|---|---|---|---|---|---|---|
-| ledger | 0 / 3 | **3 / 3** | 12 / 12 | 0% | 0% | 0 | 69 | $0.0120 |
-| slugify | 1 / 3 | 1 / 3 | 12 / 12 | 0% | 0% | 0 | 48 | $0.0092 |
-| paginate | 0 / 3 | 0 / 3 | 12 / 12 | 0% | 0% | 0 | 55 | $0.0083 |
-| control (`packaging`) | 2 / 2 scored* | 2 / 2 | 12 / 12 | 0% | 0% | 0 | 60 | $0.0132 |
-| **total** | **3 / 11** | **6 / 11** | 48 / 48 | 0% | 0% | 0 | — | **$0.0427** |
+Worktrees, not in-place edits. Mutating the working copy means a Ctrl-C or a sandbox timeout can leave a planted bug in your code, and a later commit step will happily ship it. A detached worktree of HEAD makes the user's checkout untouchable by construction.
 
-\*The third control bug was rejected by `plan` (`not on a line the PR changed`), so only 2 were scored.
-
-**Where it is bad, and why.** `slugify` and `paginate` both report **Pass** while each still leaks two hidden bugs. All
-12 model mutants were killed by the existing tests, so there were no survivors and no proof tests — a high mutation
-score says "the bugs I thought of were caught", not "the tests are strong". The model's blind spots become the gate's
-blind spots. That is the honest weakness of this design, and the benchmark is sized to show it.
-
-The `ledger` result is the good case: 0/3 hidden bugs caught before, 3/3 after, because the survivors were real gaps.
+Cleaned environment. Tests run with every variable matching TOKEN, SECRET, API_KEY, PASSWORD, CREDENTIAL, `GH_*` or `GITHUB_*` stripped, because the PR's own `conftest.py` executes during the run.
 
 ## Limits
-- **Python + pytest only.** Single-line mutants. Scores committed `HEAD`, not your working tree.
-- **Mutation score is not coverage.** A survivor is only useful if the model planted a bug that matters; a clean sweep
-  can still miss anything the model did not think of.
-- **Proof tests lock in current behaviour.** They are posted as questions, never committed: a wrong boundary would
-  otherwise be enshrined as a test.
-- **Cost grows with mutants x suite time** (each kill is run twice). This benchmark: ~$0.01–0.013 per PR, 48–69 s.
-- **Never run on fork PRs.** The PR's code and tests execute during the run.
-- The control's real suite needed `hypothesis`, `pretend`, and `tomli_w`; the run was bounded to the suite covering the
-  changed function.
+
+Python and pytest only. Single-line mutants. It scores the committed HEAD, not the working tree. The project must import from its own working directory, since an editable install pointing elsewhere would test the wrong code. Cost grows with mutants times suite time, and every kill runs twice. Proof tests lock in current behaviour, which is why they are questions. Never run it on pull requests from forks: the PR's code and tests execute during the run.
+
+## Repository layout
+
+```
+mutant.py                  the deterministic half: plan, run, prove, report
+test_mutant.py             unit tests plus an end-to-end run on the demo branches
+skills/mutant/SKILL.md     the model half, as an Alan skill
+docs/                      Alan setup, automation instructions, smoke-test notes
+scripts/post_status.sh     PR comment plus required commit status
+scripts/bench.py           hidden-bug benchmark harness
+fixtures/handwritten/      hand-written mutants and proofs for offline runs
+fixtures/recorded/         raw replies and usage from the real model run
+.github/workflows/         opt-in GitHub Actions fallback
+demo/base, demo/agent-pr   branches holding the demo project and its weak agent PR
+```
 
 ## Tests
-`python -m pytest test_mutant.py` (includes an end-to-end run on the `demo/agent-pr` branch; it skips if the demo branches aren't fetched).
 
-MIT licensed.
+```
+python -m pytest test_mutant.py
+```
+
+Eleven tests covering the edit contract, the safety filters, the gate's decision table, and an end-to-end run against the demo branches that also asserts the working copy is untouched. The end-to-end test skips if the demo branches are not fetched (`git fetch origin demo/base demo/agent-pr`).
+
+## License
+
+MIT

@@ -30,7 +30,7 @@ Alan automation (pull request opened / synchronized)
   -> Alan test report, PR comment, required commit status
 ```
 
-`mutant.py` is about 300 lines of standard-library Python with zero model calls. The agent's output crosses a trust boundary as two JSON files, and the script treats them exactly like any other untrusted input. Because the script is deterministic, every verdict can be replayed from those two files and the test output, which is what you want from something that sits in front of a merge button.
+`mutant.py` is about 320 lines of standard-library Python with zero model calls. The agent's output crosses a trust boundary as two JSON files, and the script treats them exactly like any other untrusted input. Because the script is deterministic, every verdict can be replayed from those two files and the test output, which is what you want from something that sits in front of a merge button.
 
 ### The pipeline in detail
 
@@ -69,7 +69,7 @@ Two independent Alan sessions ran the `/mutant` skill on [pull request #3](https
 | Gate | Fail, 8 proven gaps | Fail, 8 proven gaps |
 | Report | [comment](https://github.com/brightyorcerf/mutant/pull/3#issuecomment-6436189833) | [comment](https://github.com/brightyorcerf/mutant/pull/3#issuecomment-6436190325) |
 
-The agent-written tests caught a third of the realistic bugs. Every survivor came back with a test that passes on the PR and fails on the bug, phrased as a question for the author, for example "free_shipping(50) is False with the mutant and True today. Is a $50 order meant to ship free, or does it only start above $50?" Neither session could read its own token usage, so the reports say cost unknown rather than guess.
+The demo PR's own tests caught a third of the realistic bugs. Every survivor came back with a test that passes on the PR and fails on the bug, phrased as a question for the author, for example "free_shipping(50) is False with the mutant and True today. Is a $50 order meant to ship free, or does it only start above $50?" Neither session could read its own token usage, so the reports say cost unknown rather than guess.
 
 ### Coverage is not the answer
 
@@ -165,7 +165,7 @@ scripts/bench.py           hidden-bug benchmark harness
 fixtures/handwritten/      hand-written mutants and proofs for offline runs
 fixtures/recorded/         raw replies and usage from the real model run
 .github/workflows/         opt-in GitHub Actions fallback
-demo/base, demo/agent-pr   branches holding the demo project and its weak agent PR (#3)
+demo/base, demo/agent-pr   branches holding the demo project and a deliberately weak PR (#3)
 demo/agent-coverage        the same PR with tests raised to 100% coverage (#4)
 ```
 

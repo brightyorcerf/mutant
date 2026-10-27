@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mutant</title>
+<meta name="description" content="A merge gate for agent-written pull requests. It blocks only when it can show you a runnable proof.">
+<meta property="og:title" content="Mutant">
+<meta property="og:description" content="A merge gate for agent-written pull requests. It blocks only when it can show you a runnable proof.">
+<meta property="og:image" content="mutant.png">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --fg: #f4f4f1;
+    --muted: #8d8d88;
+    --line: #232323;
+    --card: #111111;
+    --accent: #f2c94c;
+    --gutter: clamp(24px, 6vw, 48px);
+    --section: clamp(88px, 14vw, 160px);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: clamp(17px, 2.2vw, 19px);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 0 var(--gutter); }
+  section { padding-top: var(--section); }
+  header { padding-top: clamp(64px, 10vw, 112px); }
+  a { color: inherit; }
+
+  .logo { display: block; width: clamp(160px, 38vw, 240px); height: auto; border-radius: 4px; }
+  h1 {
+    font-size: clamp(56px, 13vw, 104px);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-weight: 700;
+    margin-top: clamp(40px, 6vw, 64px);
+  }
+  .lede {
+    font-size: clamp(24px, 4.6vw, 34px);
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    margin-top: 32px;
+  }
+  .sub { color: var(--muted); margin-top: 32px; max-width: 34em; }
+
+  .buttons { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 56px; }
+  .btn {
+    display: inline-block;
+    padding: 16px 28px;
+    border: 1px solid var(--fg);
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 16px;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn.solid { background: var(--fg); color: var(--bg); }
+  .btn:hover { background: var(--fg); color: var(--bg); }
+  .btn.solid:hover { background: transparent; color: var(--fg); }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h2 {
+    font-size: clamp(32px, 6vw, 48px);
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+    margin-top: 20px;
+  }
+  .body { margin-top: 32px; color: #cfcfca; }
+  .body + .body { margin-top: 24px; }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 56px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 36px 32px; }
+  .stat .num {
+    font-family: var(--mono);
+    font-size: clamp(40px, 8vw, 56px);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+  .stat p { margin-top: 20px; font-size: 16px; line-height: 1.6; color: var(--muted); }
+  .note { margin-top: 32px; font-size: 14px; line-height: 1.6; color: var(--muted); }
+
+  .proof {
+    margin-top: 56px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 36px 32px;
+  }
+  .proof .tag { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+  .proof .diff { font-family: var(--mono); font-size: 15px; line-height: 1.7; margin-top: 20px; overflow-x: auto; }
+  .proof .diff s { color: var(--muted); text-decoration: line-through; }
+  .proof pre {
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.8;
+    margin-top: 28px;
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: #d9d9d4;
+  }
+  .proof .ask { margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--line); font-size: 16px; line-height: 1.6; color: var(--muted); }
+
+  .rules { list-style: none; padding: 0; margin-top: 40px; }
+  .rules li { padding: 24px 0; border-top: 1px solid var(--line); display: flex; gap: 24px; }
+  .rules li:last-child { border-bottom: 1px solid var(--line); }
+  .rules .n { font-family: var(--mono); color: var(--muted); flex: 0 0 auto; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 56px; }
+  .half { border: 1px solid var(--line); border-radius: 16px; padding: 32px; }
+  .half h3 { font-size: 20px; font-weight: 600; margin-top: 12px; }
+  .half p { margin-top: 16px; font-size: 16px; line-height: 1.6; color: var(--muted); }
+
+  .steps { list-style: none; padding: 0; margin-top: 56px; counter-reset: s; }
+  .steps li { counter-increment: s; padding: 24px 0; border-top: 1px solid var(--line); display: flex; gap: 24px; align-items: baseline; }
+  .steps li:last-child { border-bottom: 1px solid var(--line); }
+  .steps li::before { content: "0" counter(s); font-family: var(--mono); color: var(--muted); flex: 0 0 auto; }
+  .steps b { font-family: var(--mono); font-weight: 600; font-size: 16px; min-width: 6.5em; }
+  .steps span { color: var(--muted); font-size: 16px; line-height: 1.6; }
+
+  .tablewrap { margin-top: 56px; overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 16px; min-width: 480px; }
+  th, td { text-align: left; padding: 20px 28px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  th { font-family: var(--mono); font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  td:not(:first-child), th:not(:first-child) { font-family: var(--mono); }
+
+  .limits { list-style: none; padding: 0; margin-top: 40px; }
+  .limits li { padding: 20px 0; border-top: 1px solid var(--line); color: #cfcfca; }
+  .limits li:last-child { border-bottom: 1px solid var(--line); }
+
+  footer { padding: var(--section) 0 clamp(64px, 10vw, 112px); color: var(--muted); font-size: 15px; line-height: 1.8; }
+  footer .links { display: flex; flex-wrap: wrap; gap: 8px 32px; margin-top: 24px; }
+
+  @media (max-width: 620px) {
+    .stats, .split { grid-template-columns: 1fr; }
+    .stat, .half, .proof { padding: 28px 24px; }
+    .steps li { flex-wrap: wrap; gap: 8px 16px; }
+    .steps span { flex-basis: 100%; }
+    th, td { padding: 16px 20px; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <img class="logo" src="mutant.png" alt="A yellow smiley mask with a green tentacle peeking out from behind it">
+  <h1>Mutant</h1>
+  <p class="lede">A merge gate for agent-written pull requests.</p>
+  <p class="sub">It plants realistic bugs in a PR. If the tests stay green, it hands you a runnable test that proves they miss one. No proof, no block.</p>
+  <div class="buttons">
+    <a class="btn solid" href="https://github.com/brightyorcerf/mutant/pull/4">See it on a real PR</a>
+    <a class="btn" href="https://github.com/brightyorcerf/mutant">Source on GitHub</a>
+  </div>
+</header>
+
+<section>
+  <p class="eyebrow">The problem</p>
+  <h2>Green only means the code agrees with itself.</h2>
+  <p class="body">When one agent writes the code and the tests, the check on your pull request is no longer a second opinion. It is the same author grading its own homework.</p>
+  <p class="body">Coverage does not rescue you. A test can execute every line of a function and still assert nothing about the boundary that matters.</p>
+</section>
+
+<section>
+  <p class="eyebrow">The result</p>
+  <h2>100% coverage. Two bugs still got through.</h2>
+  <div class="stats">
+    <div class="stat"><div class="num">100%</div><p>line and branch coverage on an agent's PR. Mutant still proved 2 bugs its tests would miss.</p></div>
+    <div class="stat"><div class="num">4 / 12</div><p>planted bugs caught by the demo PR's own tests. The other 8 each got a runnable proof.</p></div>
+    <div class="stat"><div class="num">0</div><p>model calls in the 324 line script that decides. Every verdict can be replayed.</p></div>
+    <div class="stat"><div class="num">~1&cent;</div><p>per PR on an open model, DeepSeek V4.1 Flash, in the recorded run.</p></div>
+  </div>
+  <p class="note">The cent figure comes from one recorded gateway run at $0.0100. The Alan sessions on camera could not read their own token usage, so the README leaves cost out for those.</p>
+</section>
+
+<section>
+  <p class="eyebrow">A proof, not a score</p>
+  <h2>It blocks only when it can show you.</h2>
+  <p class="body">Most mutation testing hands you a percentage. One mutant is worth about seven points, and the set changes every run, so a threshold on that is noise with a config knob. Mutant has no number to tune.</p>
+  <div class="proof">
+    <div class="tag">PROVEN GAP, pricing.py line 8</div>
+    <div class="diff"><s>return total &gt;= 50</s><br>return total &gt; 50</div>
+    <pre>def test_free_shipping_at_exactly_fifty():
+    assert free_shipping(50) is True</pre>
+    <p class="ask">The PR's tests stay green with the bug in. This test passes on the PR and fails on the bug. Posted as a question for the author: is a $50 order meant to ship free?</p>
+  </div>
+  <ul class="rules">
+    <li><span class="n">01</span><span>The proof test passes 3 times on the PR's own code.</span></li>
+    <li><span class="n">02</span><span>It fails 2 times on the planted bug.</span></li>
+    <li><span class="n">03</span><span>The full suite stays green with it added.</span></li>
+  </ul>
+</section>
+
+<section>
+  <p class="eyebrow">How it works</p>
+  <h2>The model never gets a vote.</h2>
+  <div class="split">
+    <div class="half"><div class="eyebrow">Model half</div><h3>An open model in Alan</h3><p>Invents the bugs and writes the candidate proof tests. Its output crosses as two JSON files.</p></div>
+    <div class="half"><div class="eyebrow">Script half</div><h3>324 lines of Python</h3><p>Standard library only. Treats those files as untrusted input and runs everything in a throwaway worktree.</p></div>
+  </div>
+  <ol class="steps">
+    <li><b>plan</b><span>Find the changed lines and check the baseline is green and stable, three times.</span></li>
+    <li><b>mutants</b><span>The agent proposes about twelve realistic bugs on those lines.</span></li>
+    <li><b>run</b><span>Apply each bug, run the tests, restore. Every kill is confirmed by a second run.</span></li>
+    <li><b>prove</b><span>For each survivor, the agent writes one test. The script checks it.</span></li>
+    <li><b>report</b><span>Pass, Mixed or Fail, posted to the PR with a commit status.</span></li>
+  </ol>
+</section>
+
+<section>
+  <p class="eyebrow">Two PRs, one codebase</p>
+  <h2>Coverage went up. The gaps did not go away.</h2>
+  <div class="tablewrap">
+    <table>
+      <tr><th></th><th>PR 3</th><th>PR 4</th></tr>
+      <tr><td>Test coverage</td><td>59%</td><td>100%</td></tr>
+      <tr><td>Bugs caught</td><td>4 / 12</td><td>10 / 12</td></tr>
+      <tr><td>Proven gaps</td><td>8</td><td>2</td></tr>
+      <tr><td>Gate</td><td>Fail</td><td>Fail</td></tr>
+    </table>
+  </div>
+  <p class="body">PR 3 is a deliberately weak demo PR written for this project. PR 4 is what happens when an agent is told to raise coverage. Every line and branch runs, yet nothing asserts that an order of exactly ten units gets the bulk rate.</p>
+</section>
+
+<section>
+  <p class="eyebrow">Built on Alan</p>
+  <h2>An agent does the whole job.</h2>
+  <p class="body">The gate is an Alan skill running on Alan Code with an open model, DeepSeek V4.1 Flash. The agent writes the bugs and the proof tests, runs the script and posts the report on the pull request.</p>
+  <p class="body">Two independent Alan sessions invented different bugs for the same PR and reached the same verdict.</p>
+</section>
+
+<section>
+  <p class="eyebrow">Honest limits</p>
+  <h2>What it does not do.</h2>
+  <ul class="limits">
+    <li>Python and pytest only, with single line mutants.</li>
+    <li>It finds the bugs the model thinks of. The model's blind spots are the gate's blind spots.</li>
+    <li>Proof tests lock in today's behavior, which is why they ship as questions and never as commits.</li>
+    <li>Never run it on pull requests from forks. The PR's code executes during the run.</li>
+  </ul>
+</section>
+
+<section>
+  <p class="eyebrow">See it yourself</p>
+  <h2>Open the pull requests.</h2>
+  <div class="buttons">
+    <a class="btn solid" href="https://github.com/brightyorcerf/mutant/pull/4">PR 4, 100% coverage</a>
+    <a class="btn" href="https://github.com/brightyorcerf/mutant/pull/3">PR 3, the first run</a>
+    <a class="btn" href="https://github.com/brightyorcerf/mutant">Repository</a>
+  </div>
+</section>
+
+<footer>
+  Built solo for OpenFire by Alan AI. MIT licensed.
+  <div class="links">
+    <a href="https://github.com/brightyorcerf/mutant">GitHub</a>
+    <a href="https://github.com/brightyorcerf/mutant/blob/main/README.md">README</a>
+    <a href="https://tryalan.ai">Alan</a>
+  </div>
+</footer>
+
+</main>
+</body>
+</html>

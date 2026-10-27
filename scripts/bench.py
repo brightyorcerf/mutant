@@ -24,11 +24,11 @@ def main():
     table = ["| case | hidden bugs caught by the PR's tests | with Mutant's proof tests | seconds |", "|---|---|---|---|"]
     for c in json.loads(Path(sys.argv[1]).read_text(encoding="utf-8")):
         repo, t0 = Path(c["repo"]).resolve(), time.time()
+        pf = repo / ".mutant" / "proofs.json"  # read before `plan`, which clears it
+        proofs = json.loads(pf.read_text(encoding="utf-8")) if pf.exists() else []
         subprocess.run([sys.executable, str(Path(__file__).resolve().parent.parent / "mutant.py"), "plan", "--repo", str(repo), "--base", c.get("base", "main")], check=True, capture_output=True)
         plan = json.loads((repo / ".mutant" / "plan.json").read_text(encoding="utf-8"))
         hidden = json.loads(Path(c["hidden"]).read_text(encoding="utf-8"))
-        pf = repo / ".mutant" / "proofs.json"
-        proofs = json.loads(pf.read_text(encoding="utf-8")) if pf.exists() else []
         extra = {f"test_mutant_proof_{p['mutant']}.py": p["code"] for p in proofs if p["proven"]}
         before, after = count(run_all(repo, plan, hidden)), count(run_all(repo, plan, hidden, extra))
         table.append(f"| {c['name']} | {before[0]}/{before[1]} | {after[0]}/{after[1]} | {time.time() - t0:.0f} |")

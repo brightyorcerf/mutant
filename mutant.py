@@ -75,9 +75,12 @@ def resolve_base(repo, base):
 def changed_ranges(repo, base):
     """{path: [(first, last)]} of added lines in non-test .py files."""
     path, res = None, {}
-    for line in git(repo, "diff", "-U0", "--no-color", f"{base}...HEAD").splitlines():
+    for line in git(repo, "-c", "core.quotePath=true", "diff", "-U0", "--no-color", f"{base}...HEAD").splitlines():
         if line.startswith("+++ "):
-            path = line[6:] if line.startswith("+++ b/") else None
+            p = line[4:].rstrip("\t")  # git puts a tab after a name with a space
+            if p.startswith('"'):  # and C-quotes a non-ASCII name; skipping it would make the PR look empty
+                p = ast.literal_eval("b" + p).decode("utf-8")
+            path = p[2:] if p.startswith("b/") else None
         elif line.startswith("@@") and path and path.endswith(".py") and not TEST_FILE.search(path):
             m = re.search(r"\+(\d+)(?:,(\d+))?", line)
             start, n = int(m[1]), int(m[2] if m[2] is not None else 1)
@@ -266,6 +269,9 @@ def main():
     work = Path(a.work) if a.work else repo / ".mutant"
     work.mkdir(exist_ok=True)
     (work / ".gitignore").write_text("*\n")
+    if a.cmd != "report":  # clear this step's output and everything after it: a crash must not leave an older verdict
+        for name in ("plan.json", "results.json", "proofs.json")[("plan", "run", "prove").index(a.cmd):]:
+            (work / name).unlink(missing_ok=True)
     save = lambda name, obj: (work / name).write_text(json.dumps(obj, indent=1), encoding="utf-8")
 
     if a.cmd == "plan":

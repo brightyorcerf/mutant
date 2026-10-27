@@ -112,3 +112,23 @@ def test_end_to_end_on_demo_branches_leaves_repo_clean(tmp_path):
         assert status() == before  # mutants never touched the working copy
     finally:
         subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=ROOT, capture_output=True)
+
+
+def test_changed_ranges_reads_names_git_quotes_or_pads(tmp_path):
+    g = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=tmp_path, check=True, capture_output=True)
+    g("init", "-q")
+    (tmp_path / "seed.py").write_bytes(b"x = 1\n")
+    g("add", "."); g("commit", "-qm", "chore: add seed")
+    for name in ("my file.py", "café.py"):  # git pads the first with a tab and C-quotes the second
+        (tmp_path / name).write_bytes(b"x = 2\n")
+    g("add", "."); g("commit", "-qm", "feat: add files")
+    assert mutant.changed_ranges(tmp_path, "HEAD~1") == {"my file.py": [[1, 1]], "café.py": [[1, 1]]}
+
+
+def test_crashed_run_does_not_report_the_previous_verdict(tmp_path):
+    (tmp_path / "plan.json").write_text(json.dumps({"state": "ok", "cmd": [], "ranges": {}, "baseline_s": 1}))
+    (tmp_path / "results.json").write_text(json.dumps([{"id": 1, "status": "killed"}]))  # from an earlier commit
+    (tmp_path / "mutants.json").write_text("```json\n[]\n```")  # fenced reply: json.loads crashes
+    cli = lambda s: subprocess.run([sys.executable, str(ROOT / "mutant.py"), s, "--work", str(tmp_path)], capture_output=True, text=True)
+    assert cli("run").returncode != 0
+    assert "MUTANT_STATE=failure" in cli("report").stdout

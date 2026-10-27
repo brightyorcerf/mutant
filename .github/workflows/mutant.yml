@@ -13,19 +13,19 @@ name: mutant
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, labeled]  # opt-in: only PRs carrying the `mutant` label are scored
 
 permissions:
   contents: read
   pull-requests: write
   statuses: write
 
-concurrency:
-  group: mutant-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   mutant:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'mutant')
+    concurrency:  # on the job, so an unrelated label (a skipped job) can't cancel a running score
+      group: mutant-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

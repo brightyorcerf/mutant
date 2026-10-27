@@ -60,7 +60,8 @@ fails on the bug. Raw replies are in `fixtures/recorded/`; this number is from t
 4. **Evidence** — the report is pasted into an Alan test report and posted to the PR; `scripts/post_status.sh` sets a
    `mutant` commit status, which becomes a real merge block when marked **Required** in branch protection.
 5. **Fallback** — `.github/workflows/mutant.yml` runs the deterministic half in GitHub Actions and comments the report.
-   It does not call a model: the two JSON files must come from the skill. It refuses fork PRs and holds no keys.
+   It only runs on PRs labelled `mutant`, and it does not call a model: the two JSON files must come from the skill.
+   It refuses fork PRs and holds no keys.
 
 Model availability is team-scoped: on this team's gateway only `deepseek/deepseek-v4.1-flash` and
 `minimax/minimax-m3.1-flash` are enabled. Other ids return `403 This model is disabled for the team`.

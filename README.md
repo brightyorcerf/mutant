@@ -57,7 +57,21 @@ report. The gate is deliberately asymmetric. Fail means a proven gap, an untrust
 
 ## Results
 
-One real run with `deepseek/deepseek-v4.1-flash` through Alan's model gateway, executed locally on the same code that now lives on `demo/agent-pr`. The automated run on the pull request itself is separate.
+Two independent Alan sessions ran the `/mutant` skill on [pull request #3](https://github.com/brightyorcerf/mutant/pull/3) (`demo/agent-pr` into `demo/base`), both on Alan Code with `deepseek/deepseek-v4.1-flash`. Each invented its own twelve mutants and wrote its own proof tests, and both reached the same verdict.
+
+| Metric | Session 1 | Session 2 |
+|---|---|---|
+| Mutants proposed / valid | 12 / 12 | 12 / 12 |
+| Caught by the PR's own tests | 4 | 4 |
+| Survived | 8 | 8 |
+| Invalid / equivalent / trivial / rejected | 0 / 0 / 0 / 0 | 0 / 0 / 0 / 0 |
+| Proof tests accepted | 8 / 8 | 8 / 8 |
+| Gate | Fail, 8 proven gaps | Fail, 8 proven gaps |
+| Report | [comment](https://github.com/brightyorcerf/mutant/pull/3#issuecomment-6436189833) | [comment](https://github.com/brightyorcerf/mutant/pull/3#issuecomment-6436190325) |
+
+The agent-written tests caught a third of the realistic bugs. Every survivor came back with a test that passes on the PR and fails on the bug, phrased as a question for the author, for example "free_shipping(50) is False with the mutant and True today. Is a $50 order meant to ship free, or does it only start above $50?" Neither session could read its own token usage, so the reports say cost unknown rather than guess.
+
+An earlier run on the same code, executed locally through Alan's model gateway with usage metadata:
 
 | Metric | Value |
 |---|---|
@@ -69,7 +83,7 @@ One real run with `deepseek/deepseek-v4.1-flash` through Alan's model gateway, e
 | Gate | Fail, 9 proven gaps |
 | Cost | $0.0100, 9,871 tokens, 2 model calls |
 
-The agent's tests caught 3 of 12 realistic bugs, and every one of the 9 survivors came back with a test that passes today and fails on the bug. Raw model replies and usage metadata are in `fixtures/recorded/`.
+Raw model replies and usage metadata are in `fixtures/recorded/`.
 
 ### Hidden-bug benchmark
 
@@ -106,7 +120,7 @@ The report exits 1 when the gate fails, so it drops straight into any CI system.
 1. Cloud environment: this repository, Python 3.12, and an install script of `python3 -m pip install --break-system-packages pytest` (Ubuntu 24.04 enforces PEP 668).
 2. Skill: `skills/mutant/SKILL.md`, added as a team skill named `mutant`. Alan Code on an open-weight model is the model half.
 3. Automation: GitHub `pr_opened` and `pr_synchronize` triggers. `pr_opened` alone does not re-fire on new commits, which would leave the gate stale after the author pushes a fix. Instructions are in `docs/automation-instructions.md`.
-4. Enforcement: the report goes into an Alan test report and a PR comment, and `scripts/post_status.sh` sets a `mutant` commit status. Mark that status as required in branch protection to turn the report into an actual merge block.
+4. Enforcement: the report goes into an Alan test report and a PR comment, and `scripts/post_status.sh` sets a `mutant` commit status. Alan's GitHub integration may lack the commit-status permission (it returned 403 in my runs); then post the status from a token that has it. Mark that status as required in branch protection to turn the report into an actual merge block.
 5. Fallback: `.github/workflows/mutant.yml` runs the deterministic half in GitHub Actions on PRs labelled `mutant`. It never calls a model, refuses fork PRs, and checks out without persisted credentials so the PR's own tests cannot read the job token. Because the mutants in that path come from the PR itself, a green there is not proof. The trusted gate is the Alan automation, where a separate agent writes the mutants.
 
 ## Design decisions I would defend in review

@@ -9,6 +9,21 @@
 **Submit:** X post with 1-3 min demo, a working link (the public demo PR with Mutant's comment + status), public GitHub repo (MIT).
 **Rules:** solo, open source, Alan + open models. Alan must be in the demo, not around it.
 
+## Status (Oct 27, afternoon IST)
+
+| Item | State |
+|---|---|
+| `mutant.py` plan / run / prove / report, all safety rules | Done. 11 tests green |
+| `/mutant` skill on an open model in Alan | Done. Two sessions on PR #3, deepseek-v4.1-flash: 12 mutants, 4 caught, 8 survived, 8/8 proofs, Fail, same verdict both times |
+| PR comment + Alan test report | Done, by the Alan agent |
+| Required `mutant` commit status | Done, but posted with the owner's `gh`: Alan's integration token gets 403 on statuses (answers open question 3) |
+| Automation on PR opened / synchronize | Configured. Cloud builds fail at `fetch: BUILD` for any fresh commit (Alan platform issue), so the on-camera run is a local Alan session |
+| Benchmark | Done once (3/11 hidden bugs caught by PR tests, 6/11 with proofs). Spread over 3 runs: cut |
+| Proof rule 4 (not a duplicate) | Holds by construction: the mutant survived every existing test |
+| Reproducible gate (cache mutants.json by diff hash) | Cut. Two independent runs already agreed; changing the skill before the demo costs more than it saves |
+| README, LICENSE, logo | Done |
+| Demo video, final tweet, submission | Left: record, post by 21:00 IST |
+
 ## What changed from v1, and why
 
 | v1 | v2 | Why |

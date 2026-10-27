@@ -5,8 +5,8 @@
 > Mutant produces a **proof test**: it passes on the PR's code, fails on the planted bug, and isn't already in the
 > suite. No proof, no block. The model's opinion is never the evidence.
 
-**Deadline:** building ends Oct 27, 8 PM IST. Submissions close 10 PM IST. Post by 9 PM IST at the latest, not at 9:55.
-**Submit:** X post with 1-3 min demo, a working link (the public demo PR with Mutant's comment + status), public GitHub repo (MIT).
+**Timeline (Oct 27, IST, extended):** 16:00 code freeze, repo final. 16:00-19:30 record the 1-2 min demo. 19:30 Alan's launch post goes live on X: quote it with the demo. 20:00 submission form opens (email + Discord #announcement). 22:00 final deadline. Submit by 21:00, not 21:55.
+**Submit:** quote-post of Alan's launch post with the 1-2 min demo (what it does, how it works, how Alan was used), public GitHub repo with a good README, the submission form with the repo and X post links.
 **Rules:** solo, open source, Alan + open models. Alan must be in the demo, not around it.
 
 ## Status (Oct 27, afternoon IST)
@@ -22,7 +22,10 @@
 | Proof rule 4 (not a duplicate) | Holds by construction: the mutant survived every existing test |
 | Reproducible gate (cache mutants.json by diff hash) | Cut. Two independent runs already agreed; changing the skill before the demo costs more than it saves |
 | README, LICENSE, logo | Done |
-| Demo video, final tweet, submission | Left: record, post by 21:00 IST |
+| Second-agent review of the repo | Left: fixes pushed before the 16:00 freeze |
+| Demo video (1-2 min) | Left: record 16:00-19:30 |
+| Quote Alan's launch post with the demo | Left: at 19:30 |
+| Submission form | Left: opens 20:00, submit by 21:00 |
 
 ## What changed from v1, and why
 

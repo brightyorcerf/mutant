@@ -100,7 +100,7 @@ def check_mutant(m, ranges, root):
     text = (root / file).read_bytes().decode("utf-8")
     if not find or text.count(find) != 1:
         return "rejected", None, 0, "find must appear exactly once in the file"
-    if "\n" in find.strip("\r\n"):
+    if re.search(r"[\r\n]", find.strip("\r\n") + rep.strip("\r\n")):  # a bare \r is a line break to Python too
         return "rejected", None, 0, "edit spans more than one line"
     line = text.count("\n", 0, text.index(find)) + 1
     if not any(a <= line <= b for a, b in ranges[file]):
@@ -173,7 +173,8 @@ def unsafe_test(code):
         mods = [a.name for a in n.names] if isinstance(n, ast.Import) else [n.module or ""] if isinstance(n, ast.ImportFrom) else []
         if any(m.split(".")[0] in BAD_MODULES for m in mods):
             return "imports a dangerous module"
-    body = "\n".join(l for l in code.splitlines() if not re.match(r"\s*(import|from)\s", l))
+    # unparse puts each statement on its own line, so `from x import y; eval(...)` can't hide behind an import
+    body = "\n".join(l for l in ast.unparse(tree).splitlines() if not re.match(r"\s*(import|from)\s", l))
     return "calls eval/exec/open" if UNSAFE.search(body) else None
 
 

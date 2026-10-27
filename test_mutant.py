@@ -29,6 +29,8 @@ def test_valid_edit_applies_once(root):
     ({"find": "t >="}, "exactly once"),                      # appears twice
     ({"find": "return t >= 51"}, "changed"),                 # unchanged line (g)
     ({"find": "return t >= 50\n\n\ndef g"}, "one line"),
+    ({"replace": "return t > 50\n    t = 1"}, "one line"),
+    ({"replace": "return t > 50\r    t = 1"}, "one line"),
     ({"file": "tests/test_a.py"}, "changed non-test"),
     ({"replace": "return __import__('os').x"}, "dangerous"),
     ({"replace": "return open('x')"}, "dangerous"),
@@ -53,6 +55,8 @@ def test_unsafe_test_code():
     "import importlib\n\ndef test_a():\n    importlib.import_module('o' + 's').system('echo x')\n",   # denylisted import
     "def test_a():\n    getattr(__builtins__, 'ev' + 'al')('1')\n",                                      # getattr + dunder, no import
     "from pathlib import Path\n\ndef test_a():\n    assert 'x' in Path('pricing.py').read_text()\n",      # reads source, proves nothing
+    "from pricing import f; getattr(__builtins__, 'ev' + 'al')('1')\n",                                  # hidden after an import
+    "import math; __builtins__.__dict__['ev' + 'al']('1')\n",
 ])
 def test_unsafe_test_blocks_code_execution_escapes(code):
     assert unsafe_test(code) is not None
